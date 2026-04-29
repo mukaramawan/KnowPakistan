@@ -58,3 +58,29 @@ def question_rewriter(state: AgentState):
     else:
         state["rephrased_question"] = state["question"].content
     return state
+
+def question_classifier(state: AgentState):
+    print("Entering question_classifier")
+    system_message = SystemMessage(
+        content=""" You are a classifier that determines whether a user's question is about one of the following Financial topics 
+    
+    
+    1. About jp morgan chase & co and it's financial services/reports
+    2. Any question related to stock market, investment, banking, finance, financial analysis, financial reports, financial services, economic trends, market analysis, investment strategies, financial planning, asset management, wealth management, corporate finance, personal finance, financial regulations, financial technology (fintech), or financial markets.
+    
+    If the question IS about any of these topics, respond with 'Yes'. Otherwise, respond with 'No'.
+
+    """
+    )
+
+    human_message = HumanMessage(
+        content=f"User question: {state['rephrased_question']}"
+    )
+    grade_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
+    llm = get_groq_llm()
+    structured_llm = llm.with_structured_output(GradeQuestion)
+    grader_llm = grade_prompt | structured_llm
+    result = grader_llm.invoke({})
+    state["on_topic"] = result.score.strip()
+    print(f"question_classifier: on_topic = {state['on_topic']}")
+    return state
